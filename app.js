@@ -190,16 +190,16 @@ function setupBookViewer() {
     <div class="book__base">
       <div class="left-edge"></div>
     </div>
-    <div class="book__spine"></div>
-    <div class="pages">
+    <div class="pages-base">
       <div class="page-half left"></div>
       <div class="page-half right"></div>
     </div>
+    <div class="pages"></div>
   `;
   stage.appendChild(book);
 
-  const leftHalf = book.querySelector('.page-half.left');
-  const rightHalf = book.querySelector('.page-half.right');
+  const leftHalf = book.querySelector('.pages-base .page-half.left');
+  const rightHalf = book.querySelector('.pages-base .page-half.right');
 
   // For each spread we create one "right-side" page that flips left, AND
   // we also stage a "left-side" page that already shows previous content.
@@ -208,18 +208,33 @@ function setupBookViewer() {
 
   // We'll do a sequential model where we always render the CURRENT spread on
   // the underlying base, and an animated "flipping page" overlays.
+
+  // Adds a gradient fade overlay when page content overflows the face height.
+  function syncFade(half) {
+    const face = half.querySelector('.page__face');
+    const content = face && face.querySelector('.page-content');
+    if (!face || !content) return;
+    let fade = face.querySelector('.page-fade');
+    if (content.scrollHeight > face.clientHeight + 2) {
+      if (!fade) {
+        fade = document.createElement('div');
+        fade.className = 'page-fade';
+        face.appendChild(fade);
+      }
+    } else if (fade) {
+      fade.remove();
+    }
+  }
+
+  function setHalf(half, html) {
+    half.innerHTML = `<div class="page__face">${html}</div>`;
+    requestAnimationFrame(() => syncFade(half));
+  }
+
   function renderSpread(idx) {
     const s = spreads[idx];
-    leftHalf.innerHTML = `
-      <div class="page__face">
-        ${pageContentLeft(s)}
-      </div>
-    `;
-    rightHalf.innerHTML = `
-      <div class="page__face">
-        ${pageContentRight(s)}
-      </div>
-    `;
+    setHalf(leftHalf, pageContentLeft(s));
+    setHalf(rightHalf, pageContentRight(s));
   }
 
   function pageContentLeft(s) {
@@ -253,10 +268,10 @@ function setupBookViewer() {
   const flipOverlay = document.createElement('div');
   flipOverlay.className = 'flip-overlay';
   flipOverlay.style.cssText = `
-    position: absolute; inset: 14px;
+    position: absolute; inset: 0;
     display: flex;
     perspective: 2400px;
-    transform-style: preserve-3d;
+    perspective-origin: center 60%;
     pointer-events: none;
     z-index: 50;
   `;
@@ -269,7 +284,7 @@ function setupBookViewer() {
       </div>
     </div>
   `;
-  book.appendChild(flipOverlay);
+  book.querySelector('.pages').appendChild(flipOverlay);
 
   // Reverse flip page (for going back) lives on the LEFT half
   const reverseFlipOverlay = document.createElement('div');
@@ -284,7 +299,7 @@ function setupBookViewer() {
     </div>
     <div class="page-half right"></div>
   `;
-  book.appendChild(reverseFlipOverlay);
+  book.querySelector('.pages').appendChild(reverseFlipOverlay);
 
   const flipPage = flipOverlay.querySelector('#flipPage');
   const flipFront = flipPage.querySelector('.page__face--front');
@@ -301,11 +316,13 @@ function setupBookViewer() {
   flipPage.style.transition = 'transform 1.2s cubic-bezier(.55,.03,.35,1)';
   flipPage.style.position = 'absolute';
   flipPage.style.inset = '0';
+  flipPage.style.visibility = 'hidden';
 
   flipPageRev.style.transformStyle = 'preserve-3d';
   flipPageRev.style.transition = 'transform 1.2s cubic-bezier(.55,.03,.35,1)';
   flipPageRev.style.position = 'absolute';
   flipPageRev.style.inset = '0';
+  flipPageRev.style.visibility = 'hidden';
 
   // shading element to simulate paper shadow as page rotates
   const shading = document.createElement('div');
@@ -356,7 +373,13 @@ function setupBookViewer() {
     flipBack.innerHTML = pageContentLeft(next);
     flipBack.appendChild(backShading);
 
+    // Immediately put next spread's RIGHT page under the flip overlay.
+    // flipPage starts at 0deg covering rightHalf, so the switch is invisible —
+    // it gets gradually revealed as the page rotates away.
+    setHalf(rightHalf, pageContentRight(next));
+
     // start from 0
+    flipPage.style.visibility = 'visible';
     flipPage.style.transition = 'none';
     flipPage.style.transform = 'rotateY(0deg)';
     shading.style.opacity = '0';
@@ -368,10 +391,14 @@ function setupBookViewer() {
       shading.style.opacity = '0.55';
     });
 
-    // when done, render new spread and reset
+    // when done: only left half still needs updating (right was set at start)
     setTimeout(() => {
       current += 1;
-      renderSpread(current);
+      const s = spreads[current];
+      // 1. Update LEFT half — covered by flipPage at -180deg, no visible flash
+      setHalf(leftHalf, pageContentLeft(s));
+      // 2. Hide flip overlay — seamless: left now matches what back face was showing
+      flipPage.style.visibility = 'hidden';
       flipPage.style.transition = 'none';
       flipPage.style.transform = 'rotateY(0deg)';
       shading.style.opacity = '0';
@@ -394,7 +421,12 @@ function setupBookViewer() {
     flipRevFront.innerHTML = pageContentLeft(cur);
     flipRevBack.innerHTML = pageContentRight(prev);
 
+    // Immediately put prev spread's LEFT page under the reverse flip overlay.
+    // flipPageRev starts at 0deg covering leftHalf, so invisible — revealed as page rotates away.
+    setHalf(leftHalf, pageContentLeft(prev));
+
     // start from 0
+    flipPageRev.style.visibility = 'visible';
     flipPageRev.style.transition = 'none';
     flipPageRev.style.transformOrigin = 'right center';
     flipPageRev.style.transform = 'rotateY(0deg)';
@@ -404,9 +436,14 @@ function setupBookViewer() {
       flipPageRev.style.transform = 'rotateY(180deg)';
     });
 
+    // when done: only right half still needs updating (left was set at start)
     setTimeout(() => {
       current -= 1;
-      renderSpread(current);
+      const s = spreads[current];
+      // 1. Update RIGHT half — covered by flipPageRev at 180deg, no visible flash
+      setHalf(rightHalf, pageContentRight(s));
+      // 2. Hide reverse flip overlay — seamless: right now matches what back face was showing
+      flipPageRev.style.visibility = 'hidden';
       flipPageRev.style.transition = 'none';
       flipPageRev.style.transform = 'rotateY(0deg)';
       flipRevFront.innerHTML = '';
@@ -432,16 +469,29 @@ function setupBookViewer() {
     if (e.key === 'ArrowLeft') flipPrev();
   });
 
+  // Touch swipe support for mobile
+  let touchStartX = 0;
+  book.addEventListener('touchstart', (e) => {
+    touchStartX = e.touches[0].clientX;
+  }, { passive: true });
+  book.addEventListener('touchend', (e) => {
+    const dx = e.changedTouches[0].clientX - touchStartX;
+    if (Math.abs(dx) > 44) {
+      if (dx < 0) flipNext();
+      else flipPrev();
+    }
+  }, { passive: true });
+
   // Hover hint: lift right page a bit
   rightHalf.addEventListener('mouseenter', () => {
     if (isFlipping || current >= spreads.length - 1) return;
-    flipPage.style.transition = 'transform .5s ease';
-    flipPage.style.transform = 'rotateY(-12deg)';
-    // need content so the hint is visible
     if (!flipFront.querySelector('.page-content')) {
       flipFront.innerHTML = pageContentRight(spreads[current]);
       flipFront.appendChild(shading);
     }
+    flipPage.style.visibility = 'visible';
+    flipPage.style.transition = 'transform .5s ease';
+    flipPage.style.transform = 'rotateY(-12deg)';
   });
   rightHalf.addEventListener('mouseleave', () => {
     if (isFlipping) return;
@@ -451,6 +501,7 @@ function setupBookViewer() {
       if (!isFlipping) {
         flipFront.innerHTML = '';
         flipFront.appendChild(shading);
+        flipPage.style.visibility = 'hidden';
       }
     }, 520);
   });
@@ -467,8 +518,8 @@ function isInViewport(el) {
 function setupTestimonialSlider() {
   const track = document.querySelector('.t-slider__track');
   const dotsWrap = document.querySelector('.t-dots');
-  const prev = document.querySelector('.t-slider__btns .prev');
-  const next = document.querySelector('.t-slider__btns .next');
+  const prev = document.querySelector('.t-slider__controls .prev');
+  const next = document.querySelector('.t-slider__controls .next');
   if (!track) return;
 
   const cards = Array.from(track.children);

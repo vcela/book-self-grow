@@ -44,6 +44,49 @@ body {
 img { display: block; max-width: 100%; }
 a { color: inherit; text-decoration: none; }
 
+/* Skip link for keyboard/screen-reader users */
+.skip-link {
+  position: absolute;
+  top: -100px;
+  left: 16px;
+  padding: 12px 22px;
+  background: var(--green-900);
+  color: var(--paper);
+  font-weight: 600;
+  font-size: 14px;
+  border-radius: 999px;
+  z-index: 999;
+  transition: top .3s ease;
+  white-space: nowrap;
+}
+.skip-link:focus { top: 16px; }
+
+/* Screen-reader only utility */
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0,0,0,0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Focus indicator */
+:focus-visible {
+  outline: 2px solid var(--amber);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+.btn:focus-visible, .header-cta:focus-visible {
+  outline-offset: 4px;
+}
+
+/* Scroll offset for sticky header */
+.section, footer, #top {
+  scroll-margin-top: 80px;
+}
+
 .serif {
   font-family: "Cormorant Garamond", "Cormorant", "EB Garamond", Georgia, serif;
   font-weight: 500;
@@ -120,7 +163,16 @@ a { color: inherit; text-decoration: none; }
   line-height: 1;
   box-shadow: inset 0 0 0 1px rgba(255,255,255,0.12);
 }
-.brand .mark svg { display: block; }
+.brand .mark svg { display: block; width: 100%; height: 100%; }
+.brand .mark .orbit-dot {
+  transform-box: view-box;
+  transform-origin: 50% 50%;
+  animation: orbit-dot 8s linear infinite;
+}
+@keyframes orbit-dot {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
 .brand .name {
   font-family: "Cormorant Garamond", serif;
   font-size: 22px;
@@ -702,8 +754,6 @@ h2.section-title {
   position: relative;
   width: min(960px, 100%);
   aspect-ratio: 16 / 10;
-  perspective: 2400px;
-  perspective-origin: center 60%;
 }
 
 .book-stage {
@@ -712,7 +762,6 @@ h2.section-title {
   display: flex;
   align-items: center;
   justify-content: center;
-  transform-style: preserve-3d;
 }
 
 .book {
@@ -720,8 +769,18 @@ h2.section-title {
   width: 86%;
   height: 88%;
   display: flex;
-  transform-style: preserve-3d;
-  filter: drop-shadow(0 50px 60px rgba(8, 22, 18, 0.35));
+}
+
+/* book cast shadow — separate from 3D context so filter doesn't defeat preserve-3d */
+.bookviewer::before {
+  content: '';
+  position: absolute;
+  left: 9%; right: 9%; bottom: 2%;
+  height: 64px;
+  background: rgba(8, 22, 18, 0.42);
+  filter: blur(32px);
+  border-radius: 50%;
+  pointer-events: none;
 }
 
 /* the static "base" — open book showing underlying spread */
@@ -743,13 +802,13 @@ h2.section-title {
   content: "";
   position: absolute;
   left: 50%; top: 0; bottom: 0;
-  width: 28px;
+  width: 20px;
   transform: translateX(-50%);
   background:
-    linear-gradient(90deg, transparent 0%, rgba(0,0,0,0.18) 35%, rgba(0,0,0,0.4) 50%, rgba(0,0,0,0.18) 65%, transparent 100%);
-  filter: blur(0.4px);
+    linear-gradient(90deg, transparent 0%, rgba(0,0,0,0.10) 40%, rgba(0,0,0,0.18) 50%, rgba(0,0,0,0.10) 60%, transparent 100%);
+  filter: blur(1px);
   pointer-events: none;
-  z-index: 3;
+  z-index: 1;
 }
 
 /* book "edges" — visible page stack thickness */
@@ -770,37 +829,25 @@ h2.section-title {
   border-radius: 4px 0 0 4px;
 }
 
-/* the spine */
-.book__spine {
-  position: absolute;
-  left: calc(50% - 14px);
-  top: -8px; bottom: -8px;
-  width: 28px;
-  background: linear-gradient(90deg, var(--green-900) 0%, var(--green-700) 50%, var(--green-900) 100%);
-  border-radius: 2px;
-  z-index: 5;
-  box-shadow: 0 12px 30px rgba(0,0,0,0.3);
-}
-.book__spine::before, .book__spine::after {
-  content: "";
-  position: absolute;
-  left: 50%; transform: translateX(-50%);
-  width: 14px; height: 3px;
-  background: var(--gold);
-  border-radius: 1px;
-}
-.book__spine::before { top: 18px; }
-.book__spine::after { bottom: 18px; }
+/* the spine — removed */
 
 /* page area is split into two halves; each "page" pivots from the spine */
 .pages {
   position: absolute;
   inset: 14px;
   display: flex;
-  perspective: 2400px;
-  transform-style: preserve-3d;
 }
+.flip-overlay .page-half { transform-style: preserve-3d; }
 .page-half { flex: 1; position: relative; }
+
+.pages-base {
+  position: absolute;
+  inset: 14px;
+  display: flex;
+  z-index: 2;
+  will-change: transform;
+  transform: translateZ(0);
+}
 
 .page {
   position: absolute;
@@ -815,18 +862,21 @@ h2.section-title {
 .page__face {
   position: absolute;
   inset: 0;
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
   background:
-    radial-gradient(ellipse at left center, rgba(0,0,0,0.10), transparent 30%),
+    radial-gradient(ellipse at right center, rgba(0,0,0,0.13), transparent 40%),
     linear-gradient(180deg, #fbf6e7 0%, #f6efd9 100%);
   overflow: hidden;
   padding: 38px 44px;
   box-shadow: inset 0 0 0 1px rgba(15, 42, 34, 0.03);
 }
+.page__face--front,
+.page__face--back {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
 .page.right .page__face {
   background:
-    radial-gradient(ellipse at right center, rgba(0,0,0,0.10), transparent 30%),
+    radial-gradient(ellipse at left center, rgba(0,0,0,0.13), transparent 40%),
     linear-gradient(180deg, #fbf6e7 0%, #f6efd9 100%);
 }
 
@@ -849,6 +899,8 @@ h2.section-title {
   display: flex;
   flex-direction: column;
   height: 100%;
+  position: relative;
+  z-index: 1;
   font-family: "Cormorant Garamond", serif;
   color: var(--ink);
   position: relative;
@@ -936,6 +988,16 @@ h2.section-title {
   pointer-events: none;
 }
 
+/* overflow fade — added by JS when page content is taller than the face */
+.page-fade {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 60px;
+  background: linear-gradient(to bottom, transparent, #f6efd9);
+  pointer-events: none;
+  z-index: 5;
+}
+
 /* page-flip controls */
 .flip-ctrls {
   display: flex;
@@ -999,7 +1061,8 @@ h2.section-title {
 .t-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 24px;
+  column-gap: 1.8%;
+  row-gap: 20px;
 }
 .t-card {
   background: var(--paper);
@@ -1012,6 +1075,7 @@ h2.section-title {
   gap: 18px;
   position: relative;
   overflow: hidden;
+  margin: 0;
 }
 .t-card:hover {
   transform: translateY(-6px);
@@ -1088,10 +1152,11 @@ h2.section-title {
 .t-slider__controls {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
+  gap: 18px;
   margin-top: 26px;
 }
-.t-dots { display: flex; gap: 8px; }
+.t-dots { display: flex; gap: 8px; align-items: center; }
 .t-dots button {
   width: 8px; height: 8px;
   background: var(--line-strong);
@@ -1106,8 +1171,7 @@ h2.section-title {
   width: 24px;
   border-radius: 4px;
 }
-.t-slider__btns { display: flex; gap: 10px; }
-.t-slider__btns button {
+.t-slider__btn {
   width: 44px; height: 44px;
   border-radius: 50%;
   border: 1px solid var(--line-strong);
@@ -1116,9 +1180,10 @@ h2.section-title {
   cursor: pointer;
   display: grid; place-items: center;
   transition: all .25s ease;
+  flex-shrink: 0;
 }
-.t-slider__btns button:hover { background: var(--green-900); color: var(--paper); }
-.t-slider__btns button:disabled { opacity: 0.3; cursor: not-allowed; }
+.t-slider__btn:hover { background: var(--green-900); color: var(--paper); }
+.t-slider__btn:disabled { opacity: 0.3; cursor: not-allowed; }
 
 /* ===================== BUY ===================== */
 .buy {
@@ -1400,6 +1465,8 @@ h2.section-title {
   .page__face { padding: 22px 24px; }
   .page-content h3 { font-size: 22px; }
   .page-content p { font-size: 13.5px; }
+  .flip-ctrls { flex-wrap: nowrap; }
+  .flip-progress { flex-direction: column; align-items: center; gap: 6px; }
   .flip-progress .bar { width: 140px; }
 }
 
@@ -1411,4 +1478,16 @@ h2.section-title {
   .footer__grid { grid-template-columns: 1fr; }
   .buy__extras { grid-template-columns: 1fr; }
   .page-content .pullquote, .page-content .figure { display: none; }
+
+  /* book viewer — more vertical room on small phones */
+  .bookviewer { aspect-ratio: auto; height: clamp(380px, 115vw, 480px); }
+  .page__face { padding: 14px 16px; }
+  .page-content .chapter { font-size: 9px; letter-spacing: 0.1em; margin-bottom: 4px; }
+  .page-content h3 { font-size: 16px; line-height: 1.2; margin: 0 0 8px; }
+  .page-content p { font-size: 10.5px; line-height: 1.4; margin-bottom: 5px; }
+  .page-content .page-num { font-size: 10px; }
+  /* disable dropcap float on tiny screens — reclaims ~60px vertical space */
+  .page-content .dropcap::first-letter {
+    font-size: 1.15em; float: none; line-height: inherit; padding: 0;
+  }
 }

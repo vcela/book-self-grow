@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 44 44">
+<style>
+:root { --c: #0E1F1A; }
+@media (prefers-color-scheme: dark) { :root { --c: #F2EBDA; } }
+</style>
+<circle cx="22" cy="22" r="20.5" fill="none" stroke="var(--c)" stroke-opacity="0.42" stroke-width="0.75"/>
+<path d="M22 0 L23.4 2.5 L22 5 L20.6 2.5Z" fill="var(--c)" opacity="0.45"/>
+<path d="M22 39 L23.4 41.5 L22 44 L20.6 41.5Z" fill="var(--c)" opacity="0.45"/>
+<path d="M0 22 L2.5 20.6 L5 22 L2.5 23.4Z" fill="var(--c)" opacity="0.45"/>
+<path d="M39 22 L41.5 20.6 L44 22 L41.5 23.4Z" fill="var(--c)" opacity="0.45"/>
+<circle cx="22" cy="22" r="16.5" fill="none" stroke="var(--c)" stroke-opacity="0.18" stroke-width="0.6"/>
+<line x1="9" y1="17.5" x2="35" y2="17.5" stroke="var(--c)" stroke-opacity="0.25" stroke-width="0.5"/>
+<line x1="9" y1="28.5" x2="35" y2="28.5" stroke="var(--c)" stroke-opacity="0.25" stroke-width="0.5"/>
+<text x="22" y="27" text-anchor="middle" font-family="Cormorant Garamond,Cormorant,serif" font-size="15" font-style="italic" font-weight="600" fill="var(--c)" letter-spacing="1">CM</text>
+<circle cx="22" cy="5.5" r="1.5" fill="#E08338"/>
+</svg>
